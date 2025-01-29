@@ -4,7 +4,11 @@ import com.shaulin.crud.dtos.ProductDto;
 import com.shaulin.crud.model.Product;
 import com.shaulin.crud.repositories.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Response;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,20 +24,26 @@ public class ProductController {
     private final ProductRepository repository;
 
     @GetMapping
-    public ResponseEntity getAll() {
+    public ResponseEntity<List<Product>> getAll() {
         List<Product> listProducts = repository.findAll();
         return ResponseEntity.status(HttpStatus.OK).body(listProducts);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity getById(@PathVariable(value = "id") Integer id) {
-        Optional<Product> product = repository.findById(id);
+    @GetMapping("/pageable")
+    public ResponseEntity<List<Product>> getAllPageable(@RequestParam int page, @RequestParam int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = repository.findAll(pageable);
 
-        if (product.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found");
+        return ResponseEntity.ok(productPage.getContent());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Optional<Product>> getById(@PathVariable Integer id) {
+        if (!repository.existsById(id)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
-        return ResponseEntity.status(HttpStatus.OK).body(product);
+        return ResponseEntity.ok(repository.findById(id));
     }
 
     @PostMapping
@@ -44,24 +54,24 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity delete(@PathVariable(value = "id") Integer id) {
+    public ResponseEntity<Void> delete(@PathVariable(value = "id") Integer id) {
         Optional<Product> product = repository.findById(id);
 
         if (product.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         repository.delete(product.get());
 
-        return ResponseEntity.status(HttpStatus.OK).body(product);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity update(@PathVariable(value = "id") Integer id, @RequestBody ProductDto body) {
+    public ResponseEntity<Product> update(@PathVariable(value = "id") Integer id, @RequestBody ProductDto body) {
         Optional<Product> product = repository.findById(id);
 
         if (product.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         var productToUpdate = product.get();
